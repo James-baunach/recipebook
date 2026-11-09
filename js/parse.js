@@ -257,38 +257,93 @@ export function parseCatalog(text, section = 'dinners') {
 }
 
 // ---------- pasted recipe text ----------
-const ING_HDR = /^(ingredients?|what you(?:'ll)? need)\b:?$/i;
-const STEP_HDR = /^(instructions?|directions?|method|steps?|preparation|how to make it)\b:?$/i;
+const ING_HDR = /^(ingredients?|what you(?:'ll)? need|you(?:'ll)? need)\b\s*:?\s*/i;
+const STEP_HDR = /^(instructions?|directions?|method|steps?|preparation|procedure|how to make it|to make)\b\s*:?\s*/i;
+const NOTE_HDR = /^(notes?|tips?|variations?)\b\s*:?\s*/i;
+const UNIT_WORD = /\b(cups?|c\.|tsp|tbsp|tbs|teaspoons?|tablespoons?|oz|ounces?|lbs?|pounds?|pints?|quarts?|cans?|pkgs?|packages?|cloves?|sticks?|pinch|dash|slices?|grams?|ml)\b/i;
+const STEP_START = /^(?:step\s*)?\d+\s*[.):-]\s+|^[•*·]\s*/i;
 
-export function parseRecipeText(text) {
-  const lines = String(text).split(/\r?\n/).map((l) => l.replace(/^[\s•*·▢☐□-]+/, '').trim()).filter(Boolean);
-  const r = { name: '', servings: 4, ingredients: [], steps: [], notes: '' };
-  const sv = String(text).match(/(?:serves|servings?|yield|makes)\s*:?\s*(\d+)/i);
-  if (sv) r.servings = +sv[1];
-  let mode = null;
-  for (const l of lines) {
-    if (ING_HDR.test(l)) { mode = 'ing'; continue; }
-    if (STEP_HDR.test(l)) { mode = 'step'; continue; }
-    if (/^(notes?|tips?)\b:?$/i.test(l)) { mode = 'note'; continue; }
-    if (!mode) {
-      if (!r.name && l.length < 80 && !QTY_RE.test(l)) { r.name = l; continue; }
-      if (QTY_RE.test(l) && l.length < 90) { r.ingredients.push(l); continue; }
-      if (l.length > 40) { r.steps.push(stripStepNum(l)); continue; }
-      continue;
-    }
-    if (mode === 'ing') {
-      if (/^for the\b|:$/i.test(l) && l.length < 40) r.ingredients.push('## ' + l.replace(/:$/, ''));
-      else r.ingredients.push(l);
-    } else if (mode === 'step') {
-      const s = stripStepNum(l);
-      if (s) r.steps.push(s);
-    } else r.notes += (r.notes ? '\n' : '') + l;
-  }
-  return r;
+/** Fix common text-recognition slips before parsing ("l/2" -> "1/2", fraction slash, curly quotes). */
+export function cleanOcrText(text) {
+  return String(text)
+    .replace(/⁄/g, '/')
+    .replace(/(^|[\s(])[lI|](?=\/\d)/gm, '$11')
+    .replace(/(\d)\s*\/\s*(\d)/g, '$1/$2')
+    .replace(/(\d\s+)1b(s?)\b/g, '$1lb$2')
+    .replace(/(\d)(tsp|tbsp|tbs|cups?|lbs?|oz|c\.)(?=\s)/gi, '$1 $2')
+    .replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n');
 }
 
-function stripStepNum(l) {
-  return l.replace(/^(?:step\s*)?\d+[.):]?\s*/i, '').trim();
+const minutesIn = (s) => {
+  const h = s.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)/i), m = s.match(/(\d+)\s*(?:minutes?|mins?)/i);
+  return Math.round((h ? +h[1] * 60 : 0) + (m ? +m[1] : 0));
+};
+
+/**
+ * Turn free-form recipe text (pasted, or read from a photo) into a draft.
+ * Works with or without "Ingredients"/"Directions" headings and rejoins
+ * lines that were wrapped mid-sentence.
+ */
+export function parseRecipeText(text) {
+  const src = cleanOcrText(text);
+  const r = { name: '', servings: 4, prep: 0, cook: 0, ingredients: [], steps: [], notes: '' };
+  const sv = src.match(/(?:serves|servings?|yield|makes)\s*:?\s*(?:about\s*)?(\d+)/i);
+  if (sv) r.servings = +sv[1];
+  const pt = src.match(/prep(?:aration)?\s*time\s*:?\s*((?:\d+(?:\.\d+)?\s*(?:hours?|hrs?|minutes?|mins?)\s*(?:and\s*)?)+)/i);
+  if (pt) r.prep = minutesIn(pt[1]);
+  const ct = src.match(/(?:cook|cooking|bake|baking)\s*time\s*:?\s*((?:\d+(?:\.\d+)?\s*(?:hours?|hrs?|minutes?|mins?)\s*(?:and\s*)?)+)/i);
+  if (ct) r.cook = minutesIn(ct[1]);
+
+  const lines = src.split('\n').map((l) => l.trim());
+  let mode = null; // null until a heading or a clear ingredient/step is seen
+  let lastWasBlank = false;
+  const isQtyLine = (l) => QTY_RE.test(l) || (UNIT_WORD.test(l) && l.length < 60);
+  const endsSentence = (s) => /[.!?)]$/.test(s);
+  const pushStep = (l) => {
+    const isNew = STEP_START.test(l) || !r.steps.length || endsSentence(r.steps[r.steps.length - 1]) && /^[A-Z]/.test(l) || lastWasBlank;
+    const s = l.replace(STEP_START, '').trim();
+    if (!s) return;
+    if (isNew) r.steps.push(s);
+    else r.steps[r.steps.length - 1] += ' ' + s;
+  };
+
+  for (let raw of lines) {
+    if (!raw) { lastWasBlank = true; continue; }
+    let l = raw.replace(/^[•*·▢☐□–-]\s*/, '').trim();
+    if (/^(serves|servings?|yield|makes|prep(aration)? time|cook(ing)? time|bake time|total time)\b/i.test(l)) { lastWasBlank = false; continue; }
+    if (/^(from the kitchen of|recipe from|source)\b/i.test(l)) { r.notes += (r.notes ? '\n' : '') + l; continue; }
+
+    let m;
+    if ((m = l.match(ING_HDR)) && l.length < 40 + m[0].length) { mode = 'ing'; l = l.slice(m[0].length); if (!l) { lastWasBlank = false; continue; } }
+    else if ((m = l.match(STEP_HDR)) && (l.length === m[0].length || /:/.test(m[0]))) { mode = 'step'; l = l.slice(m[0].length); if (!l) { lastWasBlank = false; continue; } }
+    else if ((m = l.match(NOTE_HDR)) && (l.length === m[0].length || /:/.test(m[0]))) { mode = 'note'; l = l.slice(m[0].length); if (!l) { lastWasBlank = false; continue; } }
+
+    if (!mode) {
+      if (!r.name && l.length < 70 && !isQtyLine(l)) { r.name = l.replace(/[:.]$/, ''); lastWasBlank = false; continue; }
+      if (isQtyLine(l) && l.length < 90) mode = 'ing';
+      else if (l.length > 35 || STEP_START.test(raw)) mode = 'step';
+      else { r.notes += (r.notes ? '\n' : '') + l; lastWasBlank = false; continue; }
+    }
+
+    if (mode === 'ing') {
+      // A long sentence after the ingredient list means the directions started without a heading.
+      if (!isQtyLine(l) && r.ingredients.length && (l.length > 45 || STEP_START.test(raw) || (lastWasBlank && l.length > 25))) { mode = 'step'; lastWasBlank = true; pushStep(raw); }
+      else if (/^for the\b|:$/i.test(l) && l.length < 40) r.ingredients.push('## ' + l.replace(/:$/, ''));
+      else if (!QTY_RE.test(l) && r.ingredients.length && !lastWasBlank && (/^[a-z(]/.test(l) || /(,|and|or|of)$/.test(r.ingredients[r.ingredients.length - 1]))) r.ingredients[r.ingredients.length - 1] += ' ' + l;
+      else r.ingredients.push(l);
+    } else if (mode === 'step') {
+      pushStep(raw.replace(/^[▢☐□]\s*/, ''));
+    } else {
+      r.notes += (r.notes ? '\n' : '') + l;
+    }
+    lastWasBlank = false;
+  }
+  if (!r.name) r.name = 'Untitled recipe';
+  // Recipe cards are often titled in capitals; "BEEF STEW" -> "Beef Stew".
+  if (r.name === r.name.toUpperCase()) r.name = r.name.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  return r;
 }
 
 /** Find durations in a step like "simmer 20 minutes" or "1 1/2 hours". Returns [{label, seconds}]. */

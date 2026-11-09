@@ -110,6 +110,7 @@ export function render(el) {
       <div class="resulthead">
         <span id="count"></span>
         <span class="spacer"></span>
+        <a class="btn small" href="#/inbox">📷 From photos</a>
         <a class="btn small" href="#/new">+ New recipe</a>
         <select id="sort" aria-label="Sort">${SORTS.map(([v, t]) => `<option value="${v}" ${F.sort === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       </div>

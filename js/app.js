@@ -9,6 +9,8 @@ const routes = [
   [/^list$/, () => import('./views/shopping.js')],
   [/^settings$/, () => import('./views/settings.js')],
   [/^new$/, () => import('./views/edit.js'), () => ({ isNew: true })],
+  [/^inbox$/, () => import('./views/inbox.js')],
+  [/^inbox\/([^/]+)$/, () => import('./views/edit.js'), (m) => ({ draftId: m[1] })],
   [/^r\/([^/]+)$/, () => import('./views/recipe.js'), (m) => ({ id: m[1] })],
   [/^r\/([^/]+)\/edit$/, () => import('./views/edit.js'), (m) => ({ id: m[1] })],
   [/^r\/([^/]+)\/cook$/, () => import('./views/cook.js'), (m) => ({ id: m[1] })],
@@ -54,7 +56,8 @@ async function route() {
 }
 
 function highlightNav(path) {
-  const key = path.split('/')[0] || 'browse';
+  const first = path.split('/')[0];
+  const key = first === 'inbox' ? 'mine' : first || 'browse';
   document.querySelectorAll('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.nav === key || (key === 'r' && a.dataset.nav === 'browse')));
 }
 
@@ -85,6 +88,7 @@ async function start() {
     throw err;
   }
   renderSectionSwitch();
+  import('./inbox.js').then((m) => m.resumeQueue());
   window.addEventListener('hashchange', route);
   route();
   // Skipped on localhost so development always sees fresh files.

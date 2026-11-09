@@ -6,6 +6,7 @@ A dinner idea catalog and recipe builder. Installable on your phone and computer
 - **Find dishes** by name or ingredient, cuisine, protein, dish type, total time, difficulty and cooking method, or use **What's in my fridge** to rank dishes by how few extra ingredients they need.
 - **Versions and cook log**: every edit saves a new version (v1, v2, …). Log each time you cook it (rating, notes, photo), compare any two versions, and star the winner as **Final**.
 - **Compare & build**: put your recipe next to others from the web, a pasted recipe, or other dishes. All columns are scaled to the same servings. Tick the ingredient lines and steps you want, edit, and save the result as a new version.
+- **Recipe photos → drafts**: photograph handwritten cards, cookbook pages or printouts (or pick a batch). Each is read on the device (Tesseract.js, downloaded on first use), turned into a draft in **My Book → 📷 Recipe photos**, and you check it beside the photo before adding it as a new recipe or as a new version of an existing dish. Photos are deleted once the draft is handled. Best on typed or neatly printed text; handwriting needs more fixing.
 - **Cook mode** (big text, screen stays on, step check-off, tap-to-start timers), **servings scaling** with US/metric conversion, and a **shopping list** grouped by store aisle.
 
 The starter recipes are untested placeholders written from general cooking knowledge. They're meant to be cooked, tweaked and replaced with your own versions.

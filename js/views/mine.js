@@ -1,6 +1,7 @@
 // My Book: the dishes you've touched — favorites, in testing, finals, your own recipes.
 import { $, esc, fmtDate } from '../util.js';
 import { listItems } from '../store.js';
+import { listDrafts } from '../inbox.js';
 import { renderCardList } from './cards.js';
 
 const TABS = [
@@ -12,7 +13,9 @@ const TABS = [
 ];
 let tab = 'testing';
 
-export function render(el) {
+export async function render(el) {
+  const drafts = await listDrafts();
+  const ready = drafts.filter((d) => d.status === 'ready').length;
   const items = listItems();
   const counts = Object.fromEntries(TABS.map(([k, , f]) => [k, items.filter(f).length]));
   const draw = () => {
@@ -35,7 +38,8 @@ export function render(el) {
   };
   el.innerHTML = `
   <section>
-    <div class="phead"><h1>My Book</h1><a class="btn primary small" href="#/new">+ New recipe</a></div>
+    <div class="phead"><h1>My Book</h1><a class="btn small" href="#/inbox">📷 Recipe photos${drafts.length ? ` <span class="badge">${ready || drafts.length}</span>` : ''}</a><a class="btn primary small" href="#/new">+ New recipe</a></div>
+    ${ready ? `<a class="notice block" href="#/inbox">${ready} recipe photo draft${ready > 1 ? 's are' : ' is'} ready to review →</a>` : ''}
     <div class="chips" id="mtabs"></div>
     <div id="mres"></div>
   </section>`;

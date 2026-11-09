@@ -1,10 +1,10 @@
 // Offline support: serve from cache first, refresh the cache in the background.
-const CACHE = 'recipebook-v1';
+const CACHE = 'recipebook-v2';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'js/app.js', 'js/util.js', 'js/db.js', 'js/parse.js', 'js/store.js', 'js/helper.js',
   'js/views/browse.js', 'js/views/cards.js', 'js/views/recipe.js', 'js/views/edit.js', 'js/views/cook.js', 'js/views/compare.js',
-  'js/views/diff.js', 'js/views/fridge.js', 'js/views/mine.js', 'js/views/shopping.js', 'js/views/settings.js', 'js/views/logcook.js',
+  'js/views/diff.js', 'js/views/fridge.js', 'js/views/mine.js', 'js/views/shopping.js', 'js/views/settings.js', 'js/views/logcook.js', 'js/views/inbox.js', 'js/inbox.js', 'js/ocr.js',
   'data/index.json',
 ];
 
