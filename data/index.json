@@ -1,0 +1,26 @@
+{
+  "dinners": [
+    "dinners/us-southern.txt",
+    "dinners/us-classics.txt",
+    "dinners/us-texmex.txt",
+    "dinners/us-cajun.txt",
+    "dinners/us-bbq.txt",
+    "dinners/us-midwest.txt",
+    "dinners/us-chicken.txt",
+    "dinners/us-seafood.txt",
+    "dinners/us-italian-american.txt",
+    "dinners/us-asian-american.txt",
+    "dinners/us-soups.txt",
+    "dinners/us-sandwiches.txt",
+    "dinners/us-weeknight.txt",
+    "dinners/us-sides.txt",
+    "dinners/intl-latin.txt",
+    "dinners/intl-italian.txt",
+    "dinners/intl-europe.txt",
+    "dinners/intl-mideast-africa.txt",
+    "dinners/intl-east-asia.txt",
+    "dinners/intl-south-se-asia.txt",
+    "dinners/intl-sides.txt",
+    "dinners/more-favorites.txt"
+  ]
+}
